@@ -177,6 +177,7 @@ const App: React.FC = () => {
       } else {
         toast.error('Gagal memproses permintaan, periksa kembali API Key Anda.');
       }
+    } finally {
       setIsProcessing(false);
     }
   };
