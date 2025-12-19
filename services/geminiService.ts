@@ -62,8 +62,17 @@ export const parseFinancialInput = async (userInput: string, validCategories: st
       description: data.description || userInput,
       success: !!data.amount
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to parse AI response:", error);
+
+    // Check for API Key specific errors
+    // Google GenAI usually throws 400 or 403 for invalid keys
+    if (error.toString().includes('400') ||
+      error.toString().includes('403') ||
+      error.toString().toLowerCase().includes('api key')) {
+      throw new Error('INVALID_API_KEY');
+    }
+
     return {
       amount: 0,
       type: 'expense',

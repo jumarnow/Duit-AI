@@ -157,9 +157,26 @@ const App: React.FC = () => {
           timestamp: new Date()
         }]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-    } finally {
+      if (err.message === 'INVALID_API_KEY') {
+        toast.error('API Key tidak valid. Cek setelan Anda.', {
+          action: {
+            label: 'Setelan',
+            onClick: () => setView('settings')
+          },
+          duration: 5000
+        });
+        setMessages(prev => [...prev, {
+          id: `bot-err-key-${userMsgId}`,
+          text: "⚠️ API Key bermasalah. Silakan perbarui di menu Setelan.",
+          sender: 'bot',
+          timestamp: new Date(),
+          status: 'error'
+        }]);
+      } else {
+        toast.error('Gagal memproses permintaan, periksa kembali API Key Anda.');
+      }
       setIsProcessing(false);
     }
   };
