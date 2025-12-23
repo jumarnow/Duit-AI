@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Transaction, Budget } from '../types';
 
 interface BudgetPageProps {
@@ -89,7 +89,7 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ transactions, budgets, categori
         })}
       </div>
 
-      {editingCategory && (
+      {editingCategory && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl animate-in fade-in zoom-in duration-200">
             <h3 className="text-lg font-black text-slate-900 mb-2">Set Budget</h3>
@@ -119,7 +119,8 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ transactions, budgets, categori
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

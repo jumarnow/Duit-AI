@@ -1,5 +1,5 @@
-
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Transaction } from '../types';
 
 interface ReportPageProps {
@@ -217,7 +217,7 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
       )}
 
       {/* Transaction List Modal */}
-      {isModalOpen && selectedCategory && (
+      {isModalOpen && selectedCategory && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-end justify-center">
           <div className="bg-white rounded-t-[40px] p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto max-h-[90vh]">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
@@ -285,7 +285,8 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
               TUTUP
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

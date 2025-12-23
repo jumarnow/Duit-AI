@@ -1,5 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import Modal from './ui/Modal';
 
@@ -197,7 +197,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
         </div>
       </div>
 
-      {isEditingDay && (
+      {isEditingDay && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-lg font-black text-slate-900 mb-2">Pilih Tanggal</h3>
@@ -228,10 +228,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {isEditingKey && (
+      {isEditingKey && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-lg font-black text-slate-900 mb-2">API Key</h3>
@@ -269,7 +270,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="pt-4 px-2">

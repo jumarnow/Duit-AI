@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
     isOpen: boolean;
@@ -23,7 +24,7 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-scale-in">
                 <div className="p-6">
@@ -45,8 +46,8 @@ const Modal: React.FC<ModalProps> = ({
                     <button
                         onClick={onConfirm}
                         className={`px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm transition-colors ${type === 'danger'
-                                ? 'bg-red-600 hover:bg-red-700'
-                                : 'bg-blue-600 hover:bg-blue-700'
+                            ? 'bg-red-600 hover:bg-red-700'
+                            : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                     >
                         {confirmText}
@@ -59,7 +60,8 @@ const Modal: React.FC<ModalProps> = ({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

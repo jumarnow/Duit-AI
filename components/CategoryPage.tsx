@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface CategoryPageProps {
   categories: string[];
@@ -23,7 +23,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categories, onAddCategory, 
   return (
     <div className="p-6 space-y-8 pb-32">
       <div className="flex items-center gap-4 pt-2">
-        <button 
+        <button
           onClick={onBack}
           className="p-2 -ml-2 text-slate-400 hover:bg-slate-50 rounded-full transition-colors"
         >
@@ -49,7 +49,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categories, onAddCategory, 
               <span className="font-bold text-slate-800">{category}</span>
             </div>
             {category !== 'Lainnya' && (
-              <button 
+              <button
                 onClick={() => onDeleteCategory(category)}
                 className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
               >
@@ -61,7 +61,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categories, onAddCategory, 
           </div>
         ))}
 
-        <button 
+        <button
           onClick={() => setIsAdding(true)}
           className="w-full py-4 border-2 border-dashed border-slate-200 rounded-[32px] text-slate-400 font-bold text-sm hover:border-blue-200 hover:text-blue-500 transition-all flex items-center justify-center gap-2"
         >
@@ -72,11 +72,11 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categories, onAddCategory, 
         </button>
       </div>
 
-      {isAdding && (
+      {isAdding && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl">
             <h3 className="text-lg font-black text-slate-900 mb-6">Kategori Baru</h3>
-            <input 
+            <input
               autoFocus
               value={newCategory}
               onChange={e => setNewCategory(e.target.value)}
@@ -84,13 +84,13 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categories, onAddCategory, 
               placeholder="Nama Kategori"
             />
             <div className="flex gap-3 mt-8">
-              <button 
+              <button
                 onClick={() => setIsAdding(false)}
                 className="flex-1 py-3 text-slate-500 font-bold"
               >
                 Batal
               </button>
-              <button 
+              <button
                 onClick={handleAdd}
                 className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-100"
               >
@@ -98,7 +98,8 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ categories, onAddCategory, 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

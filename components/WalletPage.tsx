@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Wallet, Transaction } from '../types';
 import { toast } from 'sonner';
 import Modal from './ui/Modal';
@@ -164,7 +164,7 @@ const WalletPage: React.FC<WalletPageProps> = ({ wallets, transactions, onAddWal
         </button>
       </div>
 
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-lg font-black text-slate-900 mb-6">{editingWallet ? 'Ubah Dompet' : 'Tambah Dompet'}</h3>
@@ -205,7 +205,8 @@ const WalletPage: React.FC<WalletPageProps> = ({ wallets, transactions, onAddWal
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <Modal

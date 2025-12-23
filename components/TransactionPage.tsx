@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Transaction, Wallet, TransactionType } from '../types';
 
 interface TransactionPageProps {
@@ -11,13 +11,13 @@ interface TransactionPageProps {
   onDeleteTransaction: (id: string) => void;
 }
 
-const TransactionPage: React.FC<TransactionPageProps> = ({ 
-  transactions, 
-  wallets, 
+const TransactionPage: React.FC<TransactionPageProps> = ({
+  transactions,
+  wallets,
   categories,
-  onAddTransaction, 
-  onUpdateTransaction, 
-  onDeleteTransaction 
+  onAddTransaction,
+  onUpdateTransaction,
+  onDeleteTransaction
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -81,7 +81,7 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Riwayat Transaksi</h2>
           <p className="text-sm font-medium text-slate-400">Total {transactions.length} rekaman</p>
         </div>
-        <button 
+        <button
           onClick={openAddModal}
           className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 active:scale-95 transition-all"
         >
@@ -115,7 +115,7 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className={`text-sm font-black ${tx.type === 'income' ? 'text-green-600' : 'text-slate-900'}`}>
@@ -126,8 +126,8 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
                 </p>
               </div>
               <div className="flex flex-col gap-1">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); openEditModal(tx); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); openEditModal(tx); }}
                   className="p-2 -m-1 text-slate-300 hover:text-blue-500 active:scale-90 transition-all"
                   aria-label="Edit transaksi"
                 >
@@ -135,8 +135,8 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onDeleteTransaction(tx.id); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDeleteTransaction(tx.id); }}
                   className="p-2 -m-1 text-slate-300 hover:text-red-500 active:scale-90 transition-all"
                   aria-label="Hapus transaksi"
                 >
@@ -156,21 +156,21 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
       </div>
 
       {/* Manual Entry Modal */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-end justify-center">
           <div className="bg-white rounded-t-[40px] p-8 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto max-h-[90vh]">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
             <h3 className="text-xl font-black text-slate-900 mb-6">{editingTx ? 'Ubah Transaksi' : 'Transaksi Baru'}</h3>
-            
+
             <div className="space-y-6">
               <div className="flex p-1 bg-slate-100 rounded-2xl">
-                <button 
+                <button
                   onClick={() => setType('expense')}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${type === 'expense' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-400'}`}
                 >
                   PENGELUARAN
                 </button>
-                <button 
+                <button
                   onClick={() => setType('income')}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${type === 'income' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}`}
                 >
@@ -182,8 +182,8 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nilai Transaksi</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">Rp</span>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-black"
@@ -195,7 +195,7 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kategori</label>
-                  <select 
+                  <select
                     value={category}
                     onChange={e => setCategory(e.target.value)}
                     className="w-full px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none text-xs font-bold appearance-none"
@@ -205,7 +205,7 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Dompet</label>
-                  <select 
+                  <select
                     value={wallet}
                     onChange={e => setWallet(e.target.value)}
                     className="w-full px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none text-xs font-bold appearance-none"
@@ -217,7 +217,7 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Deskripsi</label>
-                <input 
+                <input
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   className="w-full px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none text-sm font-medium"
@@ -227,13 +227,13 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
             </div>
 
             <div className="flex gap-4 mt-10 pb-4">
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors"
               >
                 BATAL
               </button>
-              <button 
+              <button
                 onClick={handleSave}
                 className="flex-[2] py-4 bg-slate-900 text-white font-black text-sm rounded-2xl shadow-xl shadow-slate-200 active:scale-95 transition-all"
               >
@@ -241,7 +241,8 @@ const TransactionPage: React.FC<TransactionPageProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
