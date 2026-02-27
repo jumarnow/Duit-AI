@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Transaction, Budget } from '../types';
 
@@ -6,11 +6,12 @@ interface BudgetPageProps {
   transactions: Transaction[];
   budgets: Budget[];
   categories: string[];
+  firstDayOfMonth: number;
   onUpdateBudget: (category: string, limit: number) => void;
   onBack: () => void;
 }
 
-const BudgetPage: React.FC<BudgetPageProps> = ({ transactions, budgets, categories, onUpdateBudget, onBack }) => {
+const BudgetPage: React.FC<BudgetPageProps> = ({ transactions, budgets, categories, firstDayOfMonth, onUpdateBudget, onBack }) => {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
 
@@ -34,19 +35,47 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ transactions, budgets, categori
     }
   };
 
+  const currentCycle = useMemo(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const date = today.getDate();
+
+    if (date >= firstDayOfMonth) {
+      return {
+        startDate: new Date(year, month, firstDayOfMonth, 0, 0, 0),
+        endDate: new Date(year, month + 1, firstDayOfMonth - 1, 23, 59, 59)
+      };
+    } else {
+      return {
+        startDate: new Date(year, month - 1, firstDayOfMonth, 0, 0, 0),
+        endDate: new Date(year, month, firstDayOfMonth - 1, 23, 59, 59)
+      };
+    }
+  }, [firstDayOfMonth]);
+
+  const currentCycleTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const d = new Date(t.timestamp);
+      return d >= currentCycle.startDate && d <= currentCycle.endDate;
+    });
+  }, [transactions, currentCycle]);
+
   return (
     <div className="p-6 space-y-8 pb-32">
       <div className="flex items-center gap-4 pt-2">
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Atur Budget</h2>
-          <p className="text-sm font-medium text-slate-400">Kendalikan pengeluaran bulanan Anda</p>
+          <p className="text-sm font-medium text-slate-400">
+            Periode: {currentCycle.startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {currentCycle.endDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+          </p>
         </div>
       </div>
 
       <div className="space-y-4">
         {categories.map(category => {
           const budget = budgets.find(b => b.category === category) || { category, limit: 0 };
-          const spent = transactions
+          const spent = currentCycleTransactions
             .filter(t => t.type === 'expense' && t.category === category)
             .reduce((sum, t) => sum + t.amount, 0);
 

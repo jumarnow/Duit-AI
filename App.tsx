@@ -424,6 +424,7 @@ const App: React.FC = () => {
               transactions={transactions}
               budgets={budgets}
               categories={categories}
+              firstDayOfMonth={firstDayOfMonth}
               onUpdateBudget={updateBudget}
               onBack={() => setView('settings')}
             />
