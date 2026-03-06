@@ -87,6 +87,7 @@ const App: React.FC = () => {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   // Persistence Effects
   useEffect(() => { localStorage.setItem(LS_KEYS.TRANSACTIONS, JSON.stringify(transactions)); }, [transactions]);
@@ -101,6 +102,23 @@ const App: React.FC = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, view]);
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      // Show button if we're not at the very bottom (with a 50px threshold)
+      setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 50);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const handleSendMessage = async (text: string) => {
     const userMsgId = Date.now().toString();
@@ -370,8 +388,14 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col min-h-0 relative">
         {view === 'chat' && (
           <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar">
-              <Dashboard transactions={transactions} budgets={budgets} wallets={wallets} />
+            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar">
+              <Dashboard
+                transactions={transactions}
+                budgets={budgets}
+                wallets={wallets}
+                showScrollButton={showScrollBottom}
+                onScrollToBottom={scrollToBottom}
+              />
               <div className="space-y-4">
                 {messages.map((msg) => <ChatMessage key={msg.id} message={msg} />)}
                 {isProcessing && (
