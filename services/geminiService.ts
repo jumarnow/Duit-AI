@@ -9,7 +9,7 @@ export const parseFinancialInput = async (userInput: string, validCategories: st
   const categoriesList = validCategories.join(", ");
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3.1-flash-lite-preview',
     contents: userInput,
     config: {
       systemInstruction: `Anda adalah asisten keuangan pintar. Tugas Anda adalah mengekstrak detail transaksi dari input pengguna dalam Bahasa Indonesia.
