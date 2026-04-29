@@ -121,9 +121,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-slate-800">Gemini API Key</h3>
+              <h3 className="font-bold text-slate-800">Kode Pesanan</h3>
               <p className="text-xs text-slate-400 font-medium">
-                {apiKey ? 'Kunci API tersimpan (Pribadi)' : 'Menggunakan kunci default'}
+                {apiKey ? 'Kode Pesanan tersimpan (Pribadi)' : 'Menggunakan kunci default'}
               </p>
             </div>
             <button
@@ -235,8 +235,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
       {isEditingKey && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl animate-in zoom-in duration-200">
-            <h3 className="text-lg font-black text-slate-900 mb-2">API Key</h3>
-            <p className="text-xs text-slate-500 mb-6">Masukkan Gemini API Key Anda. Kunci ini akan disimpan di browser Anda.</p>
+            <h3 className="text-lg font-black text-slate-900 mb-2">Kode Pesanan</h3>
+            <p className="text-xs text-slate-500 mb-6">Masukkan Kode Pesanan Anda. Kode ini akan disimpan di browser Anda.</p>
 
             <input
               type="text"
@@ -252,14 +252,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
                 onClick={handleSaveKey}
                 className="w-full py-3 bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-100 active:scale-95 transition-all"
               >
-                Simpan Key
+                Simpan
               </button>
               {apiKey && (
                 <button
                   onClick={handleRemoveKey}
                   className="w-full py-3 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-colors"
                 >
-                  Hapus Key
+                  Hapus
                 </button>
               )}
               <button
