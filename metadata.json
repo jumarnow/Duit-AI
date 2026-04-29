@@ -1,0 +1,5 @@
+{
+  "name": "DuitAI - Financial Chat Tracker",
+  "description": "An AI-powered expense and income tracker that allows users to log transactions using natural language through a chat interface.",
+  "requestFramePermissions": []
+}
