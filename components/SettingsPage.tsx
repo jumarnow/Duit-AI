@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import Modal from './ui/Modal';
@@ -6,23 +6,15 @@ import Modal from './ui/Modal';
 interface SettingsPageProps {
   onNavigate: (view: 'wallets' | 'budget' | 'categories') => void;
   firstDayOfMonth: number;
-  onUpdateFirstDay: (day: number) => void;
+  onUpdateFirstDay: (day: number) => void | Promise<void>;
   onBackup: () => void;
   onRestore: (file: File) => void;
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth, onUpdateFirstDay, onBackup, onRestore }) => {
   const [isEditingDay, setIsEditingDay] = useState(false);
-  const [isEditingKey, setIsEditingKey] = useState(false);
   const [tempDay, setTempDay] = useState(firstDayOfMonth.toString());
-  const [apiKey, setApiKey] = useState('');
-  const [tempKey, setTempKey] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const savedKey = localStorage.getItem('duitai_api_key');
-    if (savedKey) setApiKey(savedKey);
-  }, []);
 
   const menuItems = [
     {
@@ -49,29 +41,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
     }
   ];
 
-  const handleSaveDay = () => {
+  const handleSaveDay = async () => {
     const day = parseInt(tempDay);
     if (day >= 1 && day <= 31) {
-      onUpdateFirstDay(day);
+      await onUpdateFirstDay(day);
       setIsEditingDay(false);
       toast.success('Tanggal awal bulan diperbarui');
-    }
-  };
-
-  const handleSaveKey = () => {
-    localStorage.setItem('duitai_api_key', tempKey.trim());
-    setApiKey(tempKey.trim());
-    setIsEditingKey(false);
-    toast.success('API Key berhasil disimpan');
-  };
-
-  const handleRemoveKey = () => {
-    if (confirm('Hapus API Key?')) {
-      localStorage.removeItem('duitai_api_key');
-      setApiKey('');
-      setTempKey('');
-      setIsEditingKey(false);
-      toast.success('API Key dihapus');
     }
   };
 
@@ -112,7 +87,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
           </div>
         </div>
 
-        {/* API Key Setting */}
         <div className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm space-y-3">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
@@ -121,20 +95,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-slate-800">Kode Pesanan</h3>
-              <p className="text-xs text-slate-400 font-medium">
-                {apiKey ? 'Kode Pesanan tersimpan (Pribadi)' : 'Menggunakan kunci default'}
-              </p>
+              <h3 className="font-bold text-slate-800">AI Parser</h3>
+              <p className="text-xs text-slate-400 font-medium">Dikelola aman dari backend</p>
             </div>
-            <button
-              onClick={() => {
-                setTempKey(apiKey);
-                setIsEditingKey(true);
-              }}
-              className="px-4 py-2 bg-slate-50 text-slate-900 text-xs font-black rounded-xl hover:bg-slate-100 transition-colors"
-            >
-              {apiKey ? 'UBAH' : 'SET'}
-            </button>
+            <span className="px-4 py-2 bg-emerald-50 text-emerald-600 text-xs font-black rounded-xl">
+              AKTIF
+            </span>
           </div>
         </div>
 
@@ -225,48 +191,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
                 className="flex-1 py-3 bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-100 active:scale-95 transition-all"
               >
                 Simpan
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {isEditingKey && createPortal(
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl animate-in zoom-in duration-200">
-            <h3 className="text-lg font-black text-slate-900 mb-2">Kode Pesanan</h3>
-            <p className="text-xs text-slate-500 mb-6">Masukkan Kode Pesanan Anda. Kode ini akan disimpan di browser Anda.</p>
-
-            <input
-              type="text"
-              autoFocus
-              value={tempKey}
-              onChange={(e) => setTempKey(e.target.value)}
-              placeholder="AIzaSy..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold mb-6"
-            />
-
-            <div className="flex gap-3 flex-col">
-              <button
-                onClick={handleSaveKey}
-                className="w-full py-3 bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-100 active:scale-95 transition-all"
-              >
-                Simpan
-              </button>
-              {apiKey && (
-                <button
-                  onClick={handleRemoveKey}
-                  className="w-full py-3 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-colors"
-                >
-                  Hapus
-                </button>
-              )}
-              <button
-                onClick={() => setIsEditingKey(false)}
-                className="w-full py-3 text-slate-500 font-bold text-sm hover:bg-slate-50 rounded-2xl transition-colors"
-              >
-                Batal
               </button>
             </div>
           </div>

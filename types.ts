@@ -40,3 +40,42 @@ export interface AIResponse {
   wallet: string; // Extracted wallet name
   success: boolean;
 }
+
+export interface ReportBreakdownItem {
+  id: string;
+  name: string;
+  income: number;
+  expense: number;
+  total: number;
+}
+
+export interface WalletBalance {
+  id: string;
+  name: string;
+  initialBalance: number;
+  balance: number;
+  color: string;
+}
+
+export interface ReportSummary {
+  totalIncome: number;
+  totalExpense: number;
+  balanceDelta: number;
+  spendingByCategory: ReportBreakdownItem[];
+  spendingByWallet: ReportBreakdownItem[];
+  incomeByCategory: ReportBreakdownItem[];
+  incomeByWallet: ReportBreakdownItem[];
+  walletBalances: {
+    totalBalance: number;
+    wallets: WalletBalance[];
+  };
+}
+
+export interface MonthlyReport extends ReportSummary {
+  month: number;
+  year: number;
+  firstDayOfMonth: number;
+  startDate: Date;
+  endDate: Date;
+  transactions: Transaction[];
+}

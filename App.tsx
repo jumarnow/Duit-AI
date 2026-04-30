@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Transaction, ChatMessage as ChatMessageType, Budget, Wallet } from './types';
+import { Transaction, ChatMessage as ChatMessageType, Budget, Wallet, ReportSummary } from './types';
 import Dashboard from './components/Dashboard';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
@@ -10,9 +10,11 @@ import WalletPage from './components/WalletPage';
 import TransactionPage from './components/TransactionPage';
 import CategoryPage from './components/CategoryPage';
 import SettingsPage from './components/SettingsPage';
-import { parseFinancialInput } from './services/geminiService';
 import { Toaster, toast } from 'sonner';
 import Modal from './components/ui/Modal';
+import AuthPage from './components/auth/AuthPage';
+import { authApi, AuthUser } from './services/authApi';
+import { appApi } from './services/appApi';
 
 const INITIAL_CATEGORIES = [
   "Makanan & Minuman",
@@ -35,67 +37,125 @@ const LS_KEYS = {
   MESSAGES: 'duitai_messages'
 };
 
+const createWelcomeMessage = (): ChatMessageType => ({
+  id: 'welcome',
+  text: "Halo! Saya DuitAI. Ceritakan pengeluaran Anda, contoh: 'Makan siang 30rb dompet jajan'. Saya akan otomatis memotong saldo dompet tersebut! ✨",
+  sender: 'bot',
+  timestamp: new Date()
+});
+
+const readLocalBackup = () => {
+  const parse = <T,>(key: string, fallback: T): T => {
+    try {
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  return {
+    transactions: parse(LS_KEYS.TRANSACTIONS, []),
+    wallets: parse(LS_KEYS.WALLETS, []),
+    budgets: parse(LS_KEYS.BUDGETS, []),
+    categories: parse(LS_KEYS.CATEGORIES, []),
+    firstDayOfMonth: Number(localStorage.getItem(LS_KEYS.FIRST_DAY)) || undefined,
+    messages: parse(LS_KEYS.MESSAGES, []),
+    exportDate: new Date().toISOString(),
+    version: 'localStorage-migration'
+  };
+};
+
+const hasLocalBackupData = () => {
+  return [
+    LS_KEYS.TRANSACTIONS,
+    LS_KEYS.WALLETS,
+    LS_KEYS.BUDGETS,
+    LS_KEYS.CATEGORIES,
+    LS_KEYS.FIRST_DAY
+  ].some((key) => Boolean(localStorage.getItem(key)));
+};
+
 const App: React.FC = () => {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [view, setView] = useState<'chat' | 'reports' | 'budget' | 'wallets' | 'transactions' | 'settings' | 'categories'>('chat');
 
-  // Initial State from LocalStorage
-  const [messages, setMessages] = useState<ChatMessageType[]>(() => {
-    const saved = localStorage.getItem(LS_KEYS.MESSAGES);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
-    }
-    return [{
-      id: 'welcome',
-      text: "Halo! Saya DuitAI. Ceritakan pengeluaran Anda, contoh: 'Makan siang 30rb dompet jajan'. Saya akan otomatis memotong saldo dompet tersebut! ✨",
-      sender: 'bot',
-      timestamp: new Date()
-    }];
-  });
-
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem(LS_KEYS.TRANSACTIONS);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.map((t: any) => ({ ...t, timestamp: new Date(t.timestamp) }));
-    }
-    return [];
-  });
-
-  const [budgets, setBudgets] = useState<Budget[]>(() => {
-    const saved = localStorage.getItem(LS_KEYS.BUDGETS);
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [categories, setCategories] = useState<string[]>(() => {
-    const saved = localStorage.getItem(LS_KEYS.CATEGORIES);
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-  });
-
-  const [firstDayOfMonth, setFirstDayOfMonth] = useState<number>(() => {
-    const saved = localStorage.getItem(LS_KEYS.FIRST_DAY);
-    return saved ? parseInt(saved) : 1;
-  });
-
-  const [wallets, setWallets] = useState<Wallet[]>(() => {
-    const saved = localStorage.getItem(LS_KEYS.WALLETS);
-    return saved ? JSON.parse(saved) : [
-      { id: '1', name: 'Utama', balance: 0, color: 'bg-blue-600' },
-      { id: '2', name: 'Jajan', balance: 0, color: 'bg-orange-500' }
-    ];
-  });
+  const [messages, setMessages] = useState<ChatMessageType[]>([createWelcomeMessage()]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
+  const [firstDayOfMonth, setFirstDayOfMonth] = useState<number>(1);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  // Persistence Effects
-  useEffect(() => { localStorage.setItem(LS_KEYS.TRANSACTIONS, JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.WALLETS, JSON.stringify(wallets)); }, [wallets]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.BUDGETS, JSON.stringify(budgets)); }, [budgets]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.CATEGORIES, JSON.stringify(categories)); }, [categories]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.FIRST_DAY, firstDayOfMonth.toString()); }, [firstDayOfMonth]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.MESSAGES, JSON.stringify(messages)); }, [messages]);
+  useEffect(() => {
+    let active = true;
+
+    authApi.me()
+      .then((user) => {
+        if (active) setAuthUser(user);
+      })
+      .finally(() => {
+        if (active) setIsCheckingSession(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const loadBootstrap = async () => {
+    setIsBootstrapping(true);
+    try {
+      const data = await appApi.bootstrap();
+      setWallets(data.wallets);
+      setCategories(data.categories.length > 0 ? data.categories : INITIAL_CATEGORIES);
+      setBudgets(data.budgets);
+      setTransactions(data.transactions);
+      setFirstDayOfMonth(data.settings.firstDayOfMonth);
+      setMessages(data.messages.length > 0 ? data.messages : [createWelcomeMessage()]);
+      setReportSummary(await appApi.getReportSummary());
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal memuat data akun');
+    } finally {
+      setIsBootstrapping(false);
+    }
+  };
+
+  const refreshReportSummary = async () => {
+    try {
+      setReportSummary(await appApi.getReportSummary());
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal memuat ringkasan laporan');
+    }
+  };
+
+  useEffect(() => {
+    if (!authUser) return;
+
+    loadBootstrap().then(async () => {
+      const migrationKey = `duitai_migration_done_${authUser.id}`;
+      if (!localStorage.getItem(migrationKey) && hasLocalBackupData()) {
+        const shouldImport = confirm('Ditemukan data lokal lama. Pindahkan data tersebut ke akun ini?');
+        if (shouldImport) {
+          try {
+            const result = await appApi.importLocalBackup(readLocalBackup());
+            await loadBootstrap();
+            toast.success(`Migrasi selesai: ${result.transactions} transaksi dipindahkan`);
+          } catch (error: any) {
+            toast.error(error?.message || 'Migrasi data lokal gagal');
+          }
+        }
+        localStorage.setItem(migrationKey, 'true');
+      }
+    });
+  }, [authUser]);
 
   useEffect(() => {
     if (view === 'chat' && scrollRef.current) {
@@ -121,9 +181,9 @@ const App: React.FC = () => {
   };
 
   const handleSendMessage = async (text: string) => {
-    const userMsgId = Date.now().toString();
+    const pendingId = `pending-${Date.now()}`;
     const userMessage: ChatMessageType = {
-      id: userMsgId,
+      id: pendingId,
       text,
       sender: 'user',
       timestamp: new Date(),
@@ -134,100 +194,80 @@ const App: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const parsed = await parseFinancialInput(text, categories);
+      const result = await appApi.createChatMessage(text);
 
-      if (parsed.success) {
-        let targetWallet = wallets.find(w => w.name.toLowerCase() === parsed.wallet.toLowerCase());
-        let walletFeedback = "";
-        if (!targetWallet) {
-          targetWallet = wallets.find(w => w.name === 'Utama');
-          walletFeedback = `\n(⚠️ Dompet "${parsed.wallet}" tidak ditemukan, masuk ke "Utama")`;
-        }
+      setMessages(prev => [
+        ...prev.filter(m => m.id !== pendingId),
+        result.userMessage,
+        result.botMessage
+      ]);
 
-        const newTransaction: Transaction = {
-          id: `tx-${userMsgId}`,
-          amount: parsed.amount,
-          type: parsed.type,
-          category: parsed.category,
-          description: parsed.description,
-          wallet: targetWallet?.name || 'Utama',
-          timestamp: new Date(),
-        };
-
-        setTransactions(prev => [...prev, newTransaction]);
-        setMessages(prev => prev.map(m => m.id === userMsgId ? { ...m, status: 'success', transactionId: newTransaction.id } : m));
-
-        const amountFormatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(parsed.amount);
-
-        const botResponse: ChatMessageType = {
-          id: `bot-${userMsgId}`,
-          text: `✅ Berhasil!\n\n💰 ${amountFormatted}\n🏷️ ${parsed.category}\n💳 Dompet: ${newTransaction.wallet}${walletFeedback}`,
-          sender: 'bot',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, botResponse]);
-      } else {
-        setMessages(prev => prev.map(m => m.id === userMsgId ? { ...m, status: 'error' } : m));
-        setMessages(prev => [...prev, {
-          id: `bot-err-${userMsgId}`,
-          text: "Maaf, tuliskan seperti: 'Makan 20rb dompet jajan'.",
-          sender: 'bot',
-          timestamp: new Date()
-        }]);
+      if (result.transaction) {
+        setTransactions(prev => [...prev, result.transaction as Transaction]);
+        refreshReportSummary();
       }
     } catch (err: any) {
       console.error(err);
-      if (err.message === 'INVALID_API_KEY') {
-        toast.error('API Key tidak valid. Cek setelan Anda.', {
-          action: {
-            label: 'Setelan',
-            onClick: () => setView('settings')
-          },
-          duration: 5000
-        });
-        setMessages(prev => [...prev, {
-          id: `bot-err-key-${userMsgId}`,
-          text: "⚠️ API Key bermasalah. Silakan perbarui di menu Setelan.",
-          sender: 'bot',
-          timestamp: new Date(),
-          status: 'error'
-        }]);
-      } else {
-        toast.error('Gagal memproses permintaan, periksa kembali API Key Anda.');
-      }
+      setMessages(prev => prev.map(m => m.id === pendingId ? { ...m, status: 'error' } : m));
+      toast.error(err?.message || 'Gagal memproses pesan');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const updateBudget = (category: string, limit: number) => {
-    setBudgets(prev => {
-      const existing = prev.find(b => b.category === category);
-      if (existing) return prev.map(b => b.category === category ? { ...b, limit } : b);
-      return [...prev, { category, limit }];
-    });
-  };
-
-  const addWallet = (name: string, balance: number) => {
-    const colors = ['bg-blue-600', 'bg-orange-500', 'bg-purple-600', 'bg-emerald-500', 'bg-rose-500'];
-    setWallets(prev => [...prev, {
-      id: Date.now().toString(),
-      name,
-      balance,
-      color: colors[prev.length % colors.length]
-    }]);
-  };
-
-  const updateWallet = (id: string, name: string, balance: number) => {
-    const oldWallet = wallets.find(w => w.id === id);
-    setWallets(prev => prev.map(w => w.id === id ? { ...w, name, balance } : w));
-    if (oldWallet && oldWallet.name !== name) {
-      setTransactions(prev => prev.map(tx => tx.wallet === oldWallet.name ? { ...tx, wallet: name } : tx));
+  const updateBudget = async (category: string, limit: number) => {
+    try {
+      const budget = await appApi.upsertBudget(category, limit);
+      setBudgets(prev => {
+        const existing = prev.find(b => b.category === category);
+        if (existing) return prev.map(b => b.category === category ? budget : b);
+        return [...prev, budget];
+      });
+      toast.success('Budget berhasil diperbarui');
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal memperbarui budget');
     }
   };
 
-  const deleteWallet = (id: string) => {
-    setWallets(prev => prev.filter(w => w.id !== id));
+  const addWallet = async (name: string, balance: number) => {
+    try {
+      const wallet = await appApi.createWallet({ name, balance });
+      setWallets(prev => [...prev, wallet]);
+      refreshReportSummary();
+      toast.success(`Dompet "${name}" ditambahkan`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal menambah dompet');
+      throw error;
+    }
+  };
+
+  const updateWallet = async (id: string, name: string, balance: number) => {
+    const oldWallet = wallets.find(w => w.id === id);
+    try {
+      const wallet = await appApi.updateWallet(id, { name, balance });
+      setWallets(prev => prev.map(w => w.id === id ? wallet : w));
+      if (oldWallet && oldWallet.name !== name) {
+        setTransactions(prev => prev.map(tx => tx.wallet === oldWallet.name ? { ...tx, wallet: name } : tx));
+      }
+      refreshReportSummary();
+      toast.success(`Dompet "${name}" diperbarui`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal memperbarui dompet');
+      throw error;
+    }
+  };
+
+  const deleteWallet = async (id: string) => {
+    try {
+      const wallet = wallets.find(w => w.id === id);
+      await appApi.deleteWallet(id);
+      setWallets(prev => prev.filter(w => w.id !== id));
+      refreshReportSummary();
+      toast.success(`Dompet "${wallet?.name || 'dipilih'}" dihapus`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal menghapus dompet');
+      throw error;
+    }
   };
 
   // Modal State
@@ -249,18 +289,26 @@ const App: React.FC = () => {
     setModalConfig(prev => ({ ...prev, isOpen: false }));
   };
 
-  const handleManualAdd = (tx: Omit<Transaction, 'id' | 'timestamp'>) => {
-    setTransactions(prev => [...prev, {
-      ...tx,
-      id: `manual-${Date.now()}`,
-      timestamp: new Date()
-    }]);
-    toast.success('Transaksi berhasil ditambahkan');
+  const handleManualAdd = async (tx: Omit<Transaction, 'id' | 'timestamp'>) => {
+    try {
+      const transaction = await appApi.createTransaction(tx);
+      setTransactions(prev => [...prev, transaction]);
+      refreshReportSummary();
+      toast.success('Transaksi berhasil ditambahkan');
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal menambah transaksi');
+    }
   };
 
-  const handleUpdateTransaction = (id: string, updatedFields: Partial<Transaction>) => {
-    setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, ...updatedFields } : tx));
-    toast.success('Transaksi berhasil diperbarui');
+  const handleUpdateTransaction = async (id: string, updatedFields: Partial<Transaction>) => {
+    try {
+      const transaction = await appApi.updateTransaction(id, updatedFields);
+      setTransactions(prev => prev.map(tx => tx.id === id ? transaction : tx));
+      refreshReportSummary();
+      toast.success('Transaksi berhasil diperbarui');
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal memperbarui transaksi');
+    }
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -269,18 +317,29 @@ const App: React.FC = () => {
       title: 'Hapus Transaksi',
       message: 'Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.',
       type: 'danger',
-      onConfirm: () => {
-        setTransactions(prev => prev.filter(tx => tx.id !== id));
-        toast.success('Transaksi berhasil dihapus');
-        closeModal();
+      onConfirm: async () => {
+        try {
+          await appApi.deleteTransaction(id);
+          setTransactions(prev => prev.filter(tx => tx.id !== id));
+          refreshReportSummary();
+          toast.success('Transaksi berhasil dihapus');
+          closeModal();
+        } catch (error: any) {
+          toast.error(error?.message || 'Gagal menghapus transaksi');
+        }
       }
     });
   };
 
-  const addCategory = (name: string) => {
+  const addCategory = async (name: string) => {
     if (!categories.includes(name)) {
-      setCategories(prev => [...prev, name]);
-      toast.success(`Kategori "${name}" berhasil ditambahkan`);
+      try {
+        const category = await appApi.createCategory(name);
+        setCategories(prev => [...prev, category]);
+        toast.success(`Kategori "${name}" berhasil ditambahkan`);
+      } catch (error: any) {
+        toast.error(error?.message || 'Gagal menambah kategori');
+      }
     } else {
       toast.error(`Kategori "${name}" sudah ada`);
     }
@@ -296,11 +355,16 @@ const App: React.FC = () => {
       title: 'Hapus Kategori',
       message: `Hapus kategori "${name}"? Budget untuk kategori ini juga akan terhapus.`,
       type: 'danger',
-      onConfirm: () => {
-        setCategories(prev => prev.filter(c => c !== name));
-        setBudgets(prev => prev.filter(b => b.category !== name));
-        toast.success(`Kategori "${name}" berhasil dihapus`);
-        closeModal();
+      onConfirm: async () => {
+        try {
+          await appApi.deleteCategory(name);
+          setCategories(prev => prev.filter(c => c !== name));
+          setBudgets(prev => prev.filter(b => b.category !== name));
+          toast.success(`Kategori "${name}" berhasil dihapus`);
+          closeModal();
+        } catch (error: any) {
+          toast.error(error?.message || 'Gagal menghapus kategori');
+        }
       }
     });
   };
@@ -334,28 +398,17 @@ const App: React.FC = () => {
         setModalConfig({
           isOpen: true,
           title: 'Pulihkan Data',
-          message: 'Lanjutkan pemulihan? Data saat ini akan ditimpa dengan data dari file backup.',
+          message: 'Lanjutkan pemulihan? Data dari file backup akan digabungkan ke akun ini.',
           type: 'info',
-          onConfirm: () => {
-            // Mapping back strings to Date objects is critical
-            if (Array.isArray(data.transactions)) {
-              setTransactions(data.transactions.map((t: any) => ({
-                ...t,
-                timestamp: new Date(t.timestamp)
-              })));
+          onConfirm: async () => {
+            try {
+              await appApi.importLocalBackup(data);
+              await loadBootstrap();
+              toast.success('Data berhasil dipulihkan!');
+              closeModal();
+            } catch (error: any) {
+              toast.error(error?.message || 'Pemulihan data gagal');
             }
-            if (Array.isArray(data.wallets)) setWallets(data.wallets);
-            if (Array.isArray(data.budgets)) setBudgets(data.budgets);
-            if (Array.isArray(data.categories)) setCategories(data.categories);
-            if (typeof data.firstDayOfMonth === 'number') setFirstDayOfMonth(data.firstDayOfMonth);
-            if (Array.isArray(data.messages)) {
-              setMessages(data.messages.map((m: any) => ({
-                ...m,
-                timestamp: new Date(m.timestamp)
-              })));
-            }
-            toast.success('Data berhasil dipulihkan!');
-            closeModal();
           }
         });
       } catch (err) {
@@ -365,6 +418,51 @@ const App: React.FC = () => {
     };
     reader.readAsText(file);
   };
+
+  const handleLogout = async () => {
+    await authApi.logout();
+    setAuthUser(null);
+    setMessages([createWelcomeMessage()]);
+    setTransactions([]);
+    setBudgets([]);
+    setCategories(INITIAL_CATEGORIES);
+    setWallets([]);
+    setReportSummary(null);
+    setFirstDayOfMonth(1);
+    setView('chat');
+    toast.success('Berhasil keluar');
+  };
+
+  const handleUpdateFirstDay = async (day: number) => {
+    try {
+      const settings = await appApi.updateSettings({ firstDayOfMonth: day });
+      setFirstDayOfMonth(settings.firstDayOfMonth);
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal memperbarui setelan');
+      throw error;
+    }
+  };
+
+  if (isCheckingSession || (authUser && isBootstrapping)) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <>
+        <AuthPage onAuthenticated={setAuthUser} />
+        <Toaster position="top-center" richColors />
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-50 shadow-2xl overflow-hidden relative border-x border-slate-200">
@@ -379,10 +477,21 @@ const App: React.FC = () => {
             <h1 className="font-bold text-slate-800 text-lg leading-tight">DuitAI</h1>
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manager Keuangan</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{authUser.name}</span>
             </div>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-10 h-10 bg-slate-50 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-2xl flex items-center justify-center transition-colors"
+          title="Keluar"
+          aria-label="Keluar"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H9m4 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+          </svg>
+        </button>
       </header>
 
       <main className="flex-1 flex flex-col min-h-0 relative">
@@ -393,6 +502,7 @@ const App: React.FC = () => {
                 transactions={transactions}
                 budgets={budgets}
                 wallets={wallets}
+                reportSummary={reportSummary}
                 showScrollButton={showScrollBottom}
                 onScrollToBottom={scrollToBottom}
               />
@@ -436,7 +546,7 @@ const App: React.FC = () => {
             <SettingsPage
               onNavigate={(v) => setView(v)}
               firstDayOfMonth={firstDayOfMonth}
-              onUpdateFirstDay={setFirstDayOfMonth}
+              onUpdateFirstDay={handleUpdateFirstDay}
               onBackup={handleBackup}
               onRestore={handleRestore}
             />

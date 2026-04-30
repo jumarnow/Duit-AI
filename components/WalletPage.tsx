@@ -7,9 +7,9 @@ import Modal from './ui/Modal';
 interface WalletPageProps {
   wallets: Wallet[];
   transactions: Transaction[];
-  onAddWallet: (name: string, balance: number) => void;
-  onUpdateWallet: (id: string, name: string, balance: number) => void;
-  onDeleteWallet: (id: string) => void;
+  onAddWallet: (name: string, balance: number) => void | Promise<void>;
+  onUpdateWallet: (id: string, name: string, balance: number) => void | Promise<void>;
+  onDeleteWallet: (id: string) => void | Promise<void>;
   onBack: () => void;
 }
 
@@ -65,14 +65,12 @@ const WalletPage: React.FC<WalletPageProps> = ({ wallets, transactions, onAddWal
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (name.trim()) {
       if (editingWallet) {
-        onUpdateWallet(editingWallet.id, name.trim(), Number(balance) || 0);
-        toast.success(`Dompet "${name.trim()}" diperbarui`);
+        await onUpdateWallet(editingWallet.id, name.trim(), Number(balance) || 0);
       } else {
-        onAddWallet(name.trim(), Number(balance) || 0);
-        toast.success(`Dompet "${name.trim()}" ditambahkan`);
+        await onAddWallet(name.trim(), Number(balance) || 0);
       }
       setIsModalOpen(false);
     }
@@ -88,9 +86,8 @@ const WalletPage: React.FC<WalletPageProps> = ({ wallets, transactions, onAddWal
       isOpen: true,
       title: 'Hapus Dompet',
       message: `Hapus dompet "${walletName}"? Transaksi yang terhubung akan tetap ada namun dompetnya akan hilang.`,
-      onConfirm: () => {
-        onDeleteWallet(id);
-        toast.success(`Dompet "${walletName}" dihapus`);
+      onConfirm: async () => {
+        await onDeleteWallet(id);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });

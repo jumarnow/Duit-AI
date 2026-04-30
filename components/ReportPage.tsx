@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Transaction } from '../types';
+import { toast } from 'sonner';
+import { MonthlyReport, ReportBreakdownItem, Transaction } from '../types';
+import { appApi } from '../services/appApi';
 
 interface ReportPageProps {
   transactions: Transaction[];
@@ -11,6 +13,8 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -36,12 +40,37 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
 
   const currentCycle = useMemo(() => getCycleRange(selectedDate, firstDayOfMonth), [selectedDate, firstDayOfMonth]);
 
+  useEffect(() => {
+    let active = true;
+    setIsLoadingReport(true);
+
+    appApi.getMonthlyReport({
+      month: selectedDate.getMonth() + 1,
+      year: selectedDate.getFullYear()
+    })
+      .then((report) => {
+        if (active) setMonthlyReport(report);
+      })
+      .catch((error: any) => {
+        if (active) toast.error(error?.message || 'Gagal memuat laporan');
+      })
+      .finally(() => {
+        if (active) setIsLoadingReport(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedDate, firstDayOfMonth, transactions.length]);
+
   const filteredTransactions = useMemo(() => {
+    if (monthlyReport) return monthlyReport.transactions;
+
     return transactions.filter(t => {
       const d = new Date(t.timestamp);
       return d >= currentCycle.startDate && d <= currentCycle.endDate;
     });
-  }, [transactions, currentCycle]);
+  }, [transactions, currentCycle, monthlyReport]);
 
   const incomeTransactions = filteredTransactions.filter(t => t.type === 'income');
   const expenseTransactions = filteredTransactions.filter(t => t.type === 'expense');
@@ -56,11 +85,11 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
     }).sort((a, b) => b.total - a.total);
   };
 
-  const incomeBreakdown = getCategoryBreakdown(incomeTransactions);
-  const expenseBreakdown = getCategoryBreakdown(expenseTransactions);
+  const incomeBreakdown = monthlyReport?.incomeByCategory ?? getCategoryBreakdown(incomeTransactions);
+  const expenseBreakdown = monthlyReport?.spendingByCategory ?? getCategoryBreakdown(expenseTransactions);
 
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const totalExpense = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = monthlyReport?.totalIncome ?? incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalExpense = monthlyReport?.totalExpense ?? expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
 
   const categoryTransactions = useMemo(() => {
     if (!selectedCategory) return [];
@@ -68,7 +97,7 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
   }, [filteredTransactions, selectedCategory]);
 
   const BarChart = ({ data, colorClass, total, onCategoryClick }: {
-    data: { name: string, total: number }[],
+    data: Array<{ name: string, total: number } | ReportBreakdownItem>,
     colorClass: string,
     total: number,
     onCategoryClick: (category: string) => void
@@ -132,7 +161,7 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
         <div className="text-center">
           <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{monthName}</p>
           <p className="text-[9px] font-bold text-slate-400 uppercase">
-            {currentCycle.startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {currentCycle.endDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+            {(monthlyReport?.startDate ?? currentCycle.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {(monthlyReport?.endDate ?? currentCycle.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
           </p>
         </div>
         <button
@@ -144,6 +173,12 @@ const ReportPage: React.FC<ReportPageProps> = ({ transactions, firstDayOfMonth }
           </svg>
         </button>
       </div>
+
+      {isLoadingReport && (
+        <div className="bg-slate-50 border border-slate-100 p-4 rounded-[24px] text-center">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Memuat agregasi backend</p>
+        </div>
+      )}
 
       {/* Modern Arus Kas Card */}
       <div className="bg-slate-50 border border-slate-100 p-6 rounded-[32px] space-y-4">
