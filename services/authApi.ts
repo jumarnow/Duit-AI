@@ -2,6 +2,8 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string | null;
+  authProvider?: 'google' | 'email';
   createdAt: string;
   updatedAt: string;
 }
@@ -136,5 +138,18 @@ export const authApi = {
       }
     }
     authStorage.clear();
+  },
+
+  setPassword: async (password: string) => {
+    const token = authStorage.getAccessToken();
+    if (!token) throw new Error('Sesi tidak valid');
+    
+    await request<void>('/auth/set-password', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ password })
+    });
   }
 };

@@ -3,7 +3,10 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import Modal from './ui/Modal';
 
+import { AuthUser, authApi } from '../services/authApi';
+
 interface SettingsPageProps {
+  authUser: AuthUser;
   onNavigate: (view: 'wallets' | 'budget' | 'categories') => void;
   firstDayOfMonth: number;
   onUpdateFirstDay: (day: number) => void | Promise<void>;
@@ -11,8 +14,10 @@ interface SettingsPageProps {
   onRestore: (file: File) => void;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth, onUpdateFirstDay, onBackup, onRestore }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ authUser, onNavigate, firstDayOfMonth, onUpdateFirstDay, onBackup, onRestore }) => {
   const [isEditingDay, setIsEditingDay] = useState(false);
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const [tempDay, setTempDay] = useState(firstDayOfMonth.toString());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +60,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
       onRestore(e.target.files[0]);
       // Reset input value so same file can be imported twice
       e.target.value = '';
+    }
+  };
+
+  const handleSetPassword = async () => {
+    if (newPassword.length < 8) {
+      toast.error('Password minimal 8 karakter');
+      return;
+    }
+    try {
+      await authApi.setPassword(newPassword);
+      toast.success('Password berhasil disetel');
+      setIsSettingPassword(false);
+      setNewPassword('');
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal menyetel password');
     }
   };
 
@@ -125,6 +145,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
           </button>
         ))}
 
+        {authUser.authProvider === 'google' && (
+          <button
+            onClick={() => setIsSettingPassword(true)}
+            className="w-full bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-4 active:scale-[0.98] transition-all hover:bg-slate-50 text-left"
+          >
+            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-slate-800">Setel Password</h3>
+              <p className="text-xs text-slate-400 font-medium">Buat password untuk login email</p>
+            </div>
+            <div className="text-slate-300">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </button>
+        )}
+
         {/* Backup & Restore Section */}
         <div className="pt-4 pb-2">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-3">Backup & Pemulihan</p>
@@ -189,6 +231,41 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, firstDayOfMonth
               <button
                 onClick={handleSaveDay}
                 className="flex-1 py-3 bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-100 active:scale-95 transition-all"
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {isSettingPassword && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl animate-in zoom-in duration-200">
+            <h3 className="text-lg font-black text-slate-900 mb-2">Setel Password</h3>
+            <p className="text-xs text-slate-500 mb-6">Agar bisa login tanpa Google</p>
+
+            <input
+              type="password"
+              autoFocus
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Minimal 8 karakter"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold mb-6"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsSettingPassword(false)}
+                className="flex-1 py-3 text-slate-500 font-bold text-sm hover:bg-slate-50 rounded-2xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSetPassword}
+                disabled={newPassword.length < 8}
+                className="flex-1 py-3 bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-100 active:scale-95 transition-all disabled:opacity-50"
               >
                 Simpan
               </button>
