@@ -15,7 +15,7 @@ COPY . .
 # Build arguments for Vite environment variables
 ARG AI_API_KEY
 ARG AI_MODEL=gemini-3.1-flash-lite-preview
-ARG VITE_API_BASE_URL
+ARG VITE_API_BASE_URL=https://my-duit-ai-v2-be.wd1ea4.easypanel.host/api
 
 # Set as env vars so Vite's loadEnv can pick them up during build
 ENV AI_API_KEY=${AI_API_KEY}
