@@ -15,14 +15,17 @@ COPY . .
 # Build arguments for Vite environment variables
 ARG AI_API_KEY
 ARG AI_MODEL=gemini-3.1-flash-lite-preview
+ARG VITE_API_BASE_URL
 
 # Set as env vars so Vite's loadEnv can pick them up during build
 ENV AI_API_KEY=${AI_API_KEY}
 ENV AI_MODEL=${AI_MODEL}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 # Write .env file for Vite's loadEnv()
 RUN echo "AI_API_KEY=${AI_API_KEY}" > .env && \
-    echo "AI_MODEL=${AI_MODEL}" >> .env
+    echo "AI_MODEL=${AI_MODEL}" >> .env && \
+    echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" >> .env
 
 # Build the project
 RUN npm run build
