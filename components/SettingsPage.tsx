@@ -7,7 +7,7 @@ interface SettingsPageProps {
   onNavigate: (view: 'wallets' | 'budget' | 'categories') => void;
   firstDayOfMonth: number;
   onUpdateFirstDay: (day: number) => void | Promise<void>;
-  onBackup: () => void;
+  onBackup: () => void | Promise<void>;
   onRestore: (file: File) => void;
 }
 

@@ -15,6 +15,12 @@ interface BootstrapData {
   messages: Array<Omit<ChatMessage, 'timestamp'> & { timestamp: string }>;
 }
 
+interface ExportData extends Omit<BootstrapData, 'settings'> {
+  firstDayOfMonth: number;
+  exportDate: string;
+  version: string;
+}
+
 interface ChatCreateResponse {
   userMessage: Omit<ChatMessage, 'timestamp'> & { timestamp: string };
   botMessage: Omit<ChatMessage, 'timestamp'> & { timestamp: string };
@@ -166,6 +172,8 @@ export const appApi = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
+
+  exportJson: () => rawRequest<ExportData>('/export/json'),
 
   createChatMessage: async (text: string) => {
     const data = await rawRequest<ChatCreateResponse>('/chat/messages', {

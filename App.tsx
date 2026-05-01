@@ -369,25 +369,19 @@ const App: React.FC = () => {
     });
   };
 
-  const handleBackup = () => {
-    const data = {
-      transactions,
-      wallets,
-      budgets,
-      categories,
-      firstDayOfMonth,
-      messages,
-      exportDate: new Date().toISOString(),
-      version: '2.2.0'
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `duitai-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleBackup = async () => {
+    try {
+      const data = await appApi.exportJson();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `duitai-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast.error(error?.message || 'Export data gagal');
+    }
   };
 
   const handleRestore = (file: File) => {
